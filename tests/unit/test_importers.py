@@ -1,5 +1,5 @@
 import pytest
-
+from pathlib import Path
 from shop.exceptions import ImportDataError
 from shop.importers import import_products
 
@@ -77,3 +77,8 @@ def test_error_reports_correct_line(csv_factory):
 
     assert exc_info.value.line == 3
     assert isinstance(exc_info.value.__cause__, ValueError)
+
+def test_import_with_relative_path(products_csv, monkeypatch):
+    monkeypatch.chdir(products_csv.parent)
+
+    assert len(import_products(Path("products.csv"))) == 4

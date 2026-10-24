@@ -12,6 +12,7 @@ from shop.exceptions import (
 from shop.models import Product
 from shop.protocols import DiscountProvider, Notifier, ProductRepository
 from shop.value_objects import Money
+from shop.validators import validate_email, validate_percent
 
 
 class CatalogService:
@@ -71,10 +72,11 @@ class PricingService:
             percent = self._provider.get_discount(product.category)
         except DiscountProviderError as error:
             raise PricingError("Discount provider is unavailable") from error
-        if not 0 <= percent <= 100:
-            raise PricingError(f"Invalid discount: {percent}")
+        try:
+            validate_percent(percent)
+        except ValidationError as error:
+            raise PricingError(f"Invalid discount: {percent}") from error
         return product.price * (1 - percent / 100)
-
 
 class StockAlertService:
     def __init__(
@@ -88,13 +90,13 @@ class StockAlertService:
         self._min_stock = get_min_stock() if min_stock is None else min_stock
 
     def notify_low_stock(self, recipient: str) -> int:
+        address = validate_email(recipient)
         low = self._catalog.low_stock(self._min_stock)
         for product in low:
             self._notifier.send(
-                recipient, f"Low stock: {product.name} ({product.quantity} left)"
+                address, f"Low stock: {product.name} ({product.quantity} left)"
             )
         return len(low)
-
 
 def build_report(catalog: CatalogService, min_stock: int) -> dict:
     products = catalog.list_products()

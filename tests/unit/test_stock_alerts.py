@@ -1,5 +1,5 @@
 from unittest.mock import Mock, call, patch
-
+from shop.exceptions import ValidationError
 import pytest
 
 from shop.exceptions import ConfigError, NotificationError
@@ -74,3 +74,30 @@ def test_notifier_failure_is_propagated(catalog):
         service.notify_low_stock(MANAGER)
 
     assert notifier.send.call_count == 1
+
+def test_invalid_recipient_email_rejected(catalog):
+    notifier = Mock(spec=Notifier)
+    service = StockAlertService(catalog, notifier, min_stock=5)
+
+    with pytest.raises(ValidationError, match="Invalid email"):
+        service.notify_low_stock("not-an-email")
+
+    notifier.send.assert_not_called()
+
+
+def test_send_called_exactly_once(catalog):
+    notifier = Mock(spec=Notifier)
+
+    StockAlertService(catalog, notifier, min_stock=5).notify_low_stock(MANAGER)
+
+    notifier.send.assert_called_once()
+
+
+@patch("shop.services.get_min_stock", return_value=6)
+def test_patch_as_decorator(mocked_min_stock, catalog):
+    notifier = Mock(spec=Notifier)
+
+    sent = StockAlertService(catalog, notifier).notify_low_stock(MANAGER)
+
+    mocked_min_stock.assert_called_once_with()
+    assert sent == 2

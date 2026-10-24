@@ -114,8 +114,8 @@ def csv_factory(tmp_path, csv_header):
 
 
 @pytest.fixture
-def products_csv(csv_factory):
-    return csv_factory(STANDARD_ROWS, name="products.csv")
+def products_csv(csv_factory, standard_rows):
+    return csv_factory(standard_rows, name="products.csv")
 
 
 @pytest.fixture
@@ -126,3 +126,7 @@ def output_dir(tmp_path):
     yield directory
     leftovers = list(directory.glob("*.tmp"))
     assert not leftovers, f"Temporary files left behind: {leftovers}"
+
+@pytest.fixture(scope="module")
+def standard_rows() -> tuple[str, ...]:
+    return tuple(STANDARD_ROWS)
